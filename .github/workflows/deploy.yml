@@ -15,6 +15,9 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
       # ── 1. Checkout ──────────────────────────────────────────────
       - name: Checkout
@@ -70,3 +73,5 @@ jobs:
           publish_dir: ./docs
           # Keep the branch history lean — each deploy is a single commit.
           force_orphan: true
+
+
