@@ -1,0 +1,19 @@
+[application]
+name = "crimp-viz"
+out_dir = "dist"
+asset_dir = "assets"
+
+[web.app]
+title = "PA-09 / PA-20 Crimp Die Visualiser"
+
+[web.watcher]
+reload_html = true
+watch_path = ["src", "assets"]
+
+[web.resource]
+style = []
+script = []
+
+[web.resource.dev]
+style = []
+script = []
