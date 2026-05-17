@@ -1,0 +1,72 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:          # allow manual trigger from the Actions tab
+
+# Allow this job to write to the gh-pages branch and deploy Pages
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Rust toolchain ────────────────────────────────────────
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      # Cache cargo registry + build artefacts to speed up reruns
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      # ── 3. Dioxus CLI ────────────────────────────────────────────
+      - name: Install dioxus-cli
+        # cargo-binstall grabs a pre-built binary — much faster than
+        # compiling dioxus-cli from source on every run.
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Install dx via binstall
+        run: cargo binstall dioxus-cli --version "0.7.9" --no-confirm
+
+      # ── 4. Build ─────────────────────────────────────────────────
+      # dx bundle writes to docs/public/, then we flatten it to docs/
+      # as required by GitHub Pages "Deploy from branch / docs folder".
+      - name: Build release bundle
+        run: dx bundle --release --out-dir docs
+
+      - name: Flatten docs/public → docs
+        run: |
+          mv docs/public/* docs/
+          rm -rf docs/public
+
+      # Copy index.html → 404.html so deep links work after a hard
+      # refresh (GitHub Pages serves 404.html for unknown paths).
+      - name: Create 404.html
+        run: cp docs/index.html docs/404.html
+
+      # ── 5. Deploy ────────────────────────────────────────────────
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          # Keep the branch history lean — each deploy is a single commit.
+          force_orphan: true
